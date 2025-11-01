@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Drawing Arrow with Drag</title>
+    <style>
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+ 
+        #canvas {
+            position: relative;
+            width: 600px;
+            height: 400px;
+            border: 2px solid #333;
+        }
+
+        .box {
+            width: 200px;
+            height: 200px;
+            position: absolute;
+            background-color: #e1e1e1;
+            border: 2px solid #333;
+            display: flex;
+            flex-wrap: wrap;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .box1 { top: 50px; left: 50px; }
+        .box2 { top: 50px; right: 50px; }
+
+        .point {
+            width: 20px;
+            height: 20px;
+            background-color: red;
+            border-radius: 50%;
+            position: absolute;
+            cursor: pointer;
+        }
+
+        #line {
+            stroke: blue;
+            stroke-width: 2;
+            marker-end: url(#arrowhead);
+        }
+
+        .dragging {
+            opacity: 0.5;
+        }
+
+        svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas">
+        <!-- Box 1 -->
+        <div class="box box1" id="box1">
+            <div class="point" id="point1" style="top: 0%; left: 50%; transform: translate(-50%, -50%);"></div>
+            <div class="point" id="point2" style="top: 50%; left: 0%; transform: translate(-50%, -50%);"></div>
+            <div class="point" id="point3" style="top: 50%; left: 100%; transform: translate(-50%, -50%);"></div>
+            <div class="point" id="point4" style="top: 100%; left: 50%; transform: translate(-50%, -50%);"></div>
+        </div>
+
+        <!-- Box 2 -->
+        <div class="box box2" id="box2">
+            <div class="point" id="point5" style="top: 0%; left: 50%; transform: translate(-50%, -50%);"></div>
+            <div class="point" id="point6" style="top: 50%; left: 0%; transform: translate(-50%, -50%);"></div>
+            <div class="point" id="point7" style="top: 50%; left: 100%; transform: translate(-50%, -50%);"></div>
+            <div class="point" id="point8" style="top: 100%; left: 50%; transform: translate(-50%, -50%);"></div>
+        </div>
+
+        <!-- SVG Line -->
+        <svg id="svgCanvas">
+            <!-- Định nghĩa đầu mũi tên -->
+            <defs>
+                <marker id="arrowhead" viewBox="0 0 10 10" refX="5" refY="5" orient="auto" markerWidth="8" markerHeight="8">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="blue" />
+                </marker>
+            </defs>
+            <line id="line" x1="0" y1="0" x2="0" y2="0"></line>
+        </svg>
+    </div>
+
+    <script>
+        let line = document.getElementById('line');
+        let isDrawing = false;
+        let startPoint = null;
+        let currentLine = null;
+
+        // Các điểm trong Box 1 và Box 2
+        const pointsBox1 = [
+            document.getElementById('point1'),
+            document.getElementById('point2'),
+            document.getElementById('point3'),
+            document.getElementById('point4')
+        ];
+
+        const pointsBox2 = [
+            document.getElementById('point5'),
+            document.getElementById('point6'),
+            document.getElementById('point7'),
+            document.getElementById('point8')
+        ];
+
+        // Sự kiện bắt đầu kéo
+        function startDragging(event, point) {
+            isDrawing = true;
+            startPoint = point;
+            currentLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            currentLine.setAttribute('stroke', 'blue');
+            currentLine.setAttribute('stroke-width', '2');
+            currentLine.setAttribute('marker-end', 'url(#arrowhead)');
+            document.getElementById('svgCanvas').appendChild(currentLine);
+            updateLine(event);
+        }
+
+        // Cập nhật vị trí đường vẽ theo chuột
+        function updateLine(event) {
+            if (!isDrawing || !startPoint) return;
+
+            const startX = startPoint.offsetLeft + startPoint.offsetWidth / 2;
+            const startY = startPoint.offsetTop + startPoint.offsetHeight / 2;
+            const endX = event.clientX - document.getElementById('canvas').offsetLeft;
+            const endY = event.clientY - document.getElementById('canvas').offsetTop;
+
+            currentLine.setAttribute('x1', startX);
+            currentLine.setAttribute('y1', startY);
+            currentLine.setAttribute('x2', endX);
+            currentLine.setAttribute('y2', endY);
+        }
+
+        // Dừng kéo khi thả chuột
+        function stopDragging(event) {
+            if (!isDrawing) return;
+            isDrawing = false;
+
+            // Kiểm tra xem có thả chuột lên điểm nào của box2 không
+            let endPoint = null;
+            pointsBox2.forEach(point => {
+                const rect = point.getBoundingClientRect();
+                const tolerance = 20; // Khu vực cho phép thả chuột
+                if (
+                    event.clientX >= rect.left - tolerance &&
+                    event.clientX <= rect.right + tolerance &&
+                    event.clientY >= rect.top - tolerance &&
+                    event.clientY <= rect.bottom + tolerance
+                ) {
+                    endPoint = point;
+                }
+            });
+
+            if (endPoint) {
+                // Nếu có, cập nhật đường vẽ
+                const startX = startPoint.offsetLeft + startPoint.offsetWidth / 2;
+                const startY = startPoint.offsetTop + startPoint.offsetHeight / 2;
+                const endX = endPoint.offsetLeft + endPoint.offsetWidth / 2;
+                const endY = endPoint.offsetTop + endPoint.offsetHeight / 2;
+
+                currentLine.setAttribute('x2', endX);
+                currentLine.setAttribute('y2', endY);
+            } else {
+                // Nếu không thả lên điểm nào, xóa mũi tên
+                currentLine.remove();
+            }
+        }
+
+        // Thêm sự kiện cho các điểm
+        pointsBox1.forEach(point => {
+            point.addEventListener('mousedown', (event) => {
+                startDragging(event, point);
+            });
+        });
+
+        document.addEventListener('mousemove', updateLine);
+        document.addEventListener('mouseup', stopDragging);
+    </script>
+
+</body>
+</html>
