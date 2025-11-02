@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced SVG Example</title>
+    <style>
+        svg {
+            border: 1px solid #000;
+            margin-top: 20px;
+        }
+        .animated {
+            animation: move 3s infinite alternate;
+        }
+        @keyframes move {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(100px, 100px); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Advanced SVG Example</h1>
+    <p>This example includes masking, clipping, filtering, and animations.</p>
+
+    <svg width="500" height="500" xmlns="http://www.w3.org/2000/svg">
+        <!-- Masking -->
+        <defs>
+            <mask id="mask1">
+                <circle cx="150" cy="150" r="100" fill="white" />
+                <rect x="100" y="100" width="100" height="100" fill="black" />
+            </mask>
+        </defs>
+
+        <!-- Using Mask -->
+        <circle cx="150" cy="150" r="100" fill="blue" mask="url(#mask1)" />
+
+        <!-- Clipping -->
+        <defs>
+            <clipPath id="clip1">
+                <circle cx="300" cy="300" r="50" />
+            </clipPath>
+        </defs>
+
+        <!-- Using Clip -->
+        <image x="250" y="250" width="100" height="100" href="https://www.w3.org/Icons/WWW/w3c_home.png" clip-path="url(#clip1)" />
+
+        <!-- Filtering -->
+        <defs>
+            <filter id="blur1" x="0" y="0" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="10" />
+            </filter>
+        </defs>
+
+        <!-- Using Filter -->
+        <rect x="50" y="50" width="200" height="200" fill="green" filter="url(#blur1)" />
+
+        <!-- Animation -->
+        <circle cx="400" cy="400" r="40" fill="red" class="animated" />
+    </svg>
+<svg width="320" height="320" viewBox="0 0 320 320">
+  <defs>
+    <mask id="m">
+      <!-- nền đen toàn vùng mask -->
+      <rect x="0" y="0" width="320" height="320" fill="black"/>
+      <!-- đen hình tròn -->
+      <circle cx="160" cy="160" r="100" fill="black"/>
+      <!-- TRẮNG vẽ SAU và to hơi quá để lộ ra ngoài vùng đen -->
+      <rect x="90" y="90" width="160" height="160" fill="white"/>
+    </mask>
+  </defs>
+
+  <!-- mục tiêu -->
+  <circle cx="160" cy="160" r="100" fill="steelblue" mask="url(#m)"/>
+</svg>
+<svg width="320" height="320" viewBox="0 0 320 320">
+  <defs>
+    <mask id="m2">
+      <circle cx="160" cy="160" r="80" fill="white"/>
+    </mask>
+  </defs>
+
+  <rect x="50" y="50" width="200" height="200" fill="gray" mask="url(#m2)"/>
+</svg>
+
+</body>
+</html>

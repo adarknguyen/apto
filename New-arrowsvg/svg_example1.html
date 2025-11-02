@@ -1,0 +1,83 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Example</title>
+    <style>
+        svg {
+            border: 1px solid #000;
+            margin-top: 20px;
+        }
+        .draggable {
+            cursor: move;
+        }
+    </style>
+</head>
+<body>
+    <h1>SVG Interactive Example</h1>
+    <p>Click and drag the shapes to move them around!</p>
+
+    <svg width="500" height="500" xmlns="http://www.w3.org/2000/svg">
+        <!-- Defining reusable elements -->
+        <defs>
+            <!-- Gradient definition -->
+            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:rgb(255,255,0);stop-opacity:1" />
+                <stop offset="100%" style="stop-color:rgb(255,0,0);stop-opacity:1" />
+            </linearGradient>
+        </defs>
+
+        <!-- Group of elements -->
+        <g class="draggable" transform="translate(50, 50)">
+            <!-- Rectangle with gradient -->
+            <rect x="0" y="0" width="100" height="100" fill="url(#grad1)" stroke="black" stroke-width="2"/>
+            <!-- Circle -->
+            <circle cx="250" cy="50" r="50" fill="blue" stroke="black" stroke-width="3" />
+            <!-- Path (curve) -->
+            <path d="M200 200 C 250 100, 300 100, 350 200" stroke="green" fill="transparent" stroke-width="2"/>
+            <text x="50" y="400" font-family="Verdana" font-size="24" fill="black">Hello, Anh Liem!</text>
+        </g>
+
+        <!-- Line -->
+        <line x1="10" y1="200" x2="200" y2="200" stroke="black" stroke-width="2"/>
+
+        <!-- Text -->
+         <text x="50" y="400" font-family="Verdana" font-size="24" fill="black">Hello, A333nh Liem!</text>
+
+        <!-- Polygon -->
+        <polygon points="100,300 250,50 300,300" fill="purple" stroke="black" stroke-width="2"/>
+
+        <!-- Ellipse -->
+        <ellipse cx="150" cy="350" rx="85" ry="55" fill="orange" stroke="black" stroke-width="2"/>
+    </svg>
+
+    <script>
+        // Make elements draggable
+        const draggableElements = document.querySelectorAll('.draggable');
+        draggableElements.forEach(element => {
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            element.addEventListener('mousedown', (event) => {
+                isDragging = true;
+                offsetX = event.clientX - element.getBoundingClientRect().left;
+                offsetY = event.clientY - element.getBoundingClientRect().top;
+            });
+
+            document.addEventListener('mousemove', (event) => {
+                if (isDragging) {
+                    const x = event.clientX - offsetX;
+                    const y = event.clientY - offsetY;
+                    element.setAttribute('transform', `translate(${x}, ${y})`);
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        });
+    </script>
+</body>
+</html>

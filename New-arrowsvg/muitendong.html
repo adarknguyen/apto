@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SVG Arrow Resize</title>
+    <title>SVG Arrow with Curve Control</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -31,8 +31,8 @@
         }
 
         .point {
-            width: 10px;
-            height: 10px;
+            width: 15px;
+            height: 15px;
             background-color: red;
             border-radius: 50%;
             position: absolute;
@@ -43,18 +43,19 @@
             opacity: 0.5;
         }
 
-        #line {
+        #arrowPath {
+            fill: none;
             stroke: green;
             stroke-width: 2;
             marker-end: url(#arrowhead);
         }
 
         /* Định nghĩa đầu mũi tên */
-        <defs>
+        /* <defs>
             <marker id="arrowhead" viewBox="0 0 10 10" refX="5" refY="5" orient="auto" markerWidth="8" markerHeight="8">
                 <path d="M 0 0 L 10 5 L 0 10 z" fill="green" />
             </marker>
-        </defs>
+        </defs> */
     </style>
 </head>
 <body>
@@ -63,7 +64,7 @@
         <!-- SVG Canvas -->
         <svg id="svgCanvas">
             <!-- Đường mũi tên -->
-            <line id="line" x1="100" y1="100" x2="500" y2="100"></line>
+            <path id="arrowPath" d="M 100 100 C 250 50, 350 150, 500 100" />
             <!-- Định nghĩa đầu mũi tên -->
             <defs>
                 <marker id="arrowhead" viewBox="0 0 10 10" refX="5" refY="5" orient="auto" markerWidth="8" markerHeight="8">
@@ -75,27 +76,30 @@
         <!-- Các điểm kéo -->
         <div id="point1" class="point" style="left: 100px; top: 100px;"></div> <!-- Điểm bắt đầu mũi tên -->
         <div id="point2" class="point" style="left: 500px; top: 100px;"></div> <!-- Điểm kết thúc mũi tên -->
+        <div id="controlPoint" class="point" style="left: 300px; top: 50px;"></div> <!-- Điểm điều khiển độ cong -->
     </div>
 
     <script>
-        const line = document.getElementById('line');
+        const arrowPath = document.getElementById('arrowPath');
         const point1 = document.getElementById('point1');
         const point2 = document.getElementById('point2');
+        const controlPoint = document.getElementById('controlPoint');
 
         let isDragging = false;
         let currentPoint = null;
 
-        // Hàm tính toán và cập nhật đường mũi tên
+        // Cập nhật đường cong Bézier
         function updateArrow() {
             const x1 = parseFloat(point1.style.left);
             const y1 = parseFloat(point1.style.top);
             const x2 = parseFloat(point2.style.left);
             const y2 = parseFloat(point2.style.top);
+            const cx = parseFloat(controlPoint.style.left);
+            const cy = parseFloat(controlPoint.style.top);
 
-            line.setAttribute('x1', x1);
-            line.setAttribute('y1', y1);
-            line.setAttribute('x2', x2);
-            line.setAttribute('y2', y2);
+            // Cập nhật lại đường Bézier
+            const d = `M ${x1} ${y1} C ${cx} ${cy}, ${cx} ${cy}, ${x2} ${y2}`;
+            arrowPath.setAttribute('d', d);
         }
 
         // Khi bắt đầu kéo
@@ -115,6 +119,19 @@
             currentPoint.style.left = `${offsetX - currentPoint.offsetWidth / 2}px`;
             currentPoint.style.top = `${offsetY - currentPoint.offsetHeight / 2}px`;
 
+            // Giữ điểm chính giữa luôn nằm trên thân mũi tên
+            if (currentPoint === controlPoint) {
+                let x1 = parseFloat(point1.style.left);
+                let y1 = parseFloat(point1.style.top);
+                let x2 = parseFloat(point2.style.left);
+                let y2 = parseFloat(point2.style.top);
+
+                // Tính toán và điều chỉnh điểm điều khiển nằm trên đoạn thẳng giữa 2 điểm
+                const ratio = 0.5; // Điều chỉnh độ kéo
+                controlPoint.style.left = `${x1 + (x2 - x1) * ratio}px`;
+                controlPoint.style.top = `${y1 + (y2 - y1) * ratio}px`;
+            }
+
             updateArrow(); // Cập nhật lại mũi tên khi kéo
         }
 
@@ -129,6 +146,7 @@
         // Gán sự kiện cho các điểm kéo
         point1.addEventListener('mousedown', (event) => startDragging(event, point1));
         point2.addEventListener('mousedown', (event) => startDragging(event, point2));
+        controlPoint.addEventListener('mousedown', (event) => startDragging(event, controlPoint));
 
         document.addEventListener('mousemove', drag);
         document.addEventListener('mouseup', stopDragging);

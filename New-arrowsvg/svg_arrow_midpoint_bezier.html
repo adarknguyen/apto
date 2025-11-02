@@ -1,0 +1,185 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SVG Arrow — 2 endpoints + midpoint on curve (Quadratic Bézier)</title>
+<style>
+  :root{
+    --bg:#0b0c10;
+    --panel:#13151a;
+    --border:#22252b;
+    --text:#e6e9ef;
+    --muted:#aab0bb;
+    --accent:#8ab4f8;
+    --ok:#7ee787;
+    --warn:#ffd166;
+  }
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:1000px;margin:24px auto;padding:0 16px}
+  h1{font-size:22px;margin:12px 0 16px}
+  p{color:var(--muted);margin:6px 0 14px}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px}
+  svg{width:100%;height:auto;background:#0e0f13;border:1px solid var(--border);border-radius:12px}
+  .gridline{stroke:#23262d;stroke-width:.6}
+  .label{fill:#cfd6e4;font-size:12px}
+  .handle{cursor:grab;stroke:#ffffff;stroke-width:1.5}
+  .handle:active{cursor:grabbing}
+  .p0{fill:#ff8b8b}
+  .p1{fill:#888} /* hidden by default; can show by uncommenting visibility */
+  .p2{fill:#9be07d}
+  .pm{fill:#ffd166}
+  .helper{stroke:#6b7280;stroke-dasharray:6 6;stroke-width:1.2;opacity:.85}
+  .pill{display:inline-block;padding:2px 8px;background:#171a20;border:1px solid var(--border);border-radius:999px;margin-right:6px;color:#cfd6e4}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:8px 0 12px}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mũi tên Bézier: 2 điểm đầu & 1 điểm giữa (mid) luôn nằm trên thân</h1>
+  <div class="row">
+    <span class="pill">Kéo <b>đầu</b> (đỏ) hoặc <b>cuối</b> (xanh)</span>
+    <span class="pill">Kéo <b>giữa</b> (vàng) để đổi độ cong</span>
+    <span class="pill">Arrow: Quadratic Bézier (M, Q, Z)</span>
+  </div>
+  <p>Điểm giữa (vàng) luôn bám trên đường tại tham số <span class="mono">t=0.5</span>. Kéo midpoint sẽ tính lại <span class="mono">control point</span> để đường đi qua điểm đó; kéo hai đầu thì midpoint tự di chuyển theo đường, giữ đúng vị trí tham số.</p>
+
+  <div class="panel">
+    <svg id="stage" viewBox="0 0 800 420">
+     
+
+      <!-- background grid -->
+      <rect x="0" y="0" width="800" height="420" fill="url(#grid)"/>
+
+      <!-- helpers (control line & tangents) -->
+      <line id="h1" class="helper" x1="0" y1="0" x2="0" y2="0"/>
+      <line id="h2" class="helper" x1="0" y1="0" x2="0" y2="0"/>
+
+      <!-- the arrow path (quadratic Bézier) -->
+      <path id="arrowPath" d="" fill="none" stroke="var(--accent)" stroke-width="4"
+            marker-end="url(#arrow)"/>
+
+      <!-- handles -->
+      <circle id="p0" class="handle p0" r="7" cx="120" cy="300"/>
+      <circle id="p2" class="handle p2" r="7" cx="680" cy="120"/>
+      <!-- Control point (kept hidden visually; uncomment to show)
+      <circle id="p1" class="handle p1" r="6" cx="320" cy="120" style="visibility:visible"/>
+      -->
+      <circle id="pm" class="handle pm" r="8" cx="0" cy="0"/>
+      
+      <!-- labels -->
+      <text id="lbl" class="label" x="12" y="24"></text>
+    </svg>
+
+    <p class="mono" id="code"></p>
+  </div>
+</div>
+
+<script>
+// --------- Math helpers for quadratic Bézier ----------
+function qPoint(t, P0, P1, P2){
+  const u = 1 - t;
+  return {
+    x: u*u*P0.x + 2*u*t*P1.x + t*t*P2.x,
+    y: u*u*P0.y + 2*u*t*P1.y + t*t*P2.y
+  };
+}
+
+// Solve control point P1 so that curve passes through M at parameter t
+// P1 = [M - (1-t)^2 P0 - t^2 P2] / [2(1-t)t]
+function qControlFromPointAtT(t, P0, P2, M){
+  const u = 1 - t;
+  const denom = 2*u*t;
+  return {
+    x: (M.x - (u*u)*P0.x - (t*t)*P2.x) / denom,
+    y: (M.y - (u*u)*P0.y - (t*t)*P2.y) / denom
+  };
+}
+
+// ---------- DOM refs ----------
+const svg = document.getElementById('stage');
+const p0 = document.getElementById('p0'); // start
+const p2 = document.getElementById('p2'); // end
+const pm = document.getElementById('pm'); // midpoint on curve
+const path = document.getElementById('arrowPath');
+const h1 = document.getElementById('h1');
+const h2 = document.getElementById('h2');
+const lbl = document.getElementById('lbl');
+const code = document.getElementById('code');
+
+// State
+let P0 = {x:+p0.getAttribute('cx'), y:+p0.getAttribute('cy')};
+let P2 = {x:+p2.getAttribute('cx'), y:+p2.getAttribute('cy')};
+// Initial control: place somewhere reasonable
+let P1 = {x: (P0.x*0.6 + P2.x*0.4), y: (P0.y*0.3 + P2.y*0.7)};
+
+// Midpoint parameter (fixed)
+const tMid = 0.5;
+
+// ---- Utils: pointer to SVG coordinates ----
+function svgPoint(evt){
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+// ---- Render ----
+function render(){
+  // Update midpoint on curve
+  const M = qPoint(tMid, P0, P1, P2);
+  pm.setAttribute('cx', M.x);
+  pm.setAttribute('cy', M.y);
+  
+  // Update helpers (show P0-P1 and P1-P2)
+  h1.setAttribute('x1', P0.x); h1.setAttribute('y1', P0.y);
+  h1.setAttribute('x2', P1.x); h1.setAttribute('y2', P1.y);
+  h2.setAttribute('x1', P2.x); h2.setAttribute('y1', P2.y);
+  h2.setAttribute('x2', P1.x); h2.setAttribute('y2', P1.y);
+
+  // Update path
+  path.setAttribute('d', `M ${P0.x} ${P0.y} Q ${P1.x} ${P1.y} ${P2.x} ${P2.y}`);
+
+  // Label & code
+  lbl.textContent = `P0(${P0.x.toFixed(1)}, ${P0.y.toFixed(1)}) • P1(control: ${P1.x.toFixed(1)}, ${P1.y.toFixed(1)}) • P2(${P2.x.toFixed(1)}, ${P2.y.toFixed(1)}) • t=${tMid}`;
+  code.textContent = `d="M ${P0.x.toFixed(1)} ${P0.y.toFixed(1)} Q ${P1.x.toFixed(1)} ${P1.y.toFixed(1)} ${P2.x.toFixed(1)} ${P2.y.toFixed(1)}"`;
+}
+
+// ---- Drag logic ----
+let active = null;
+function enableDrag(el, onMove){
+  el.addEventListener('pointerdown', (e)=>{
+    active = el;
+    el.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener('pointermove', (e)=>{
+    if(active !== el) return;
+    const p = svgPoint(e);
+    onMove(p);
+    render();
+  });
+  svg.addEventListener('pointerup', ()=>{
+    if(active === el) active = null;
+  });
+}
+
+// Drag start point
+enableDrag(p0, (p)=>{
+  P0 = {x:p.x, y:p.y};
+});
+// Drag end point
+enableDrag(p2, (p)=>{
+  P2 = {x:p.x, y:p.y};
+});
+// Drag midpoint: recompute control so curve passes through the dragged mid at t=tMid
+enableDrag(pm, (p)=>{
+  const M = {x:p.x, y:p.y};
+  P1 = qControlFromPointAtT(tMid, P0, P2, M);
+});
+
+// Initial render
+render();
+</script>
+</body>
+</html>

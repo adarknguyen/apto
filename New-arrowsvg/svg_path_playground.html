@@ -1,0 +1,287 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>SVG Path Playground — Q & C Bézier</title>
+<style>
+  :root{
+    --bg:#0b0c10; --panel:#13151a; --bord:#22262b; --ink:#e9edf3; --mut:#aab0bb;
+    --a:#8ab4f8; --b:#7ee787; --c:#ffd166; --d:#ff8b8b; --g:#6b7280;
+  }
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+  h1{font-size:22px;margin:6px 0 14px}
+  p{color:var(--mut);margin:6px 0 12px}
+  .panel{background:var(--panel);border:10px solid var(--bord);border-radius:14px;padding:14px;margin:14px 0}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;background:#171a20;border:1px solid var(--bord);border-radius:999px}
+  .btn{padding:8px 12px;border:1px solid var(--bord);border-radius:10px;background:#171a20;color:var(--ink);cursor:pointer}
+  .btn:hover{filter:brightness(1.1)}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  svg{width:100%;height:auto;background:#0f1116;border:1px solid var(--bord);border-radius:12px}
+  .grid{stroke:#1f232b;stroke-width:.7}
+  .helper{stroke:var(--g);stroke-dasharray:6 6;stroke-width:1.2}
+  .handle{cursor:grab;stroke:#fff;stroke-width:1.2}
+  .handle:active{cursor:grabbing}
+  .p0{fill:var(--d)} .p1{fill:#888} .p2{fill:var(--b)} .p3{fill:#a78bfa}
+  .pm{fill:var(--c)}
+  .label{fill:#cfd6e4;font-size:12px}
+  .code{white-space:pre-wrap;background:#0e1015;border:1px solid var(--bord);border-radius:10px;padding:10px}
+  input[type="range"]{width:220px}
+  .k{width:52px;text-align:right}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SVG Path Playground — Bézier Quadratic (Q) & Cubic (C)</h1>
+  <p>Di chuyển các điểm **bằng kéo thả** hoặc thay đổi **slider** để hiểu trực quan các tham số. Bạn có thể bật chế độ Quadratic hoặc Cubic.</p>
+
+  <div class="panel">
+    <div class="row">
+      <span class="pill"><b>Chế độ:</b>
+        <button class="btn" id="modeQ">Quadratic (Q)</button>
+        <button class="btn" id="modeC">Cubic (C)</button>
+      </span>
+      <span class="pill">Arrow marker ở cuối đường</span>
+      <button class="btn" id="presetArc">Preset: Cung nhẹ</button>
+      <button class="btn" id="presetS">Preset: S sóng</button>
+      <button class="btn" id="reset">Đặt lại</button>
+      <button class="btn" id="copy">Copy d</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <svg id="stage" viewBox="0 0 1000 480">
+      <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 H 0 M 0 0 V 20" class="grid"/>
+        </pattern>
+        <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 Z" fill="currentColor"/>
+        </marker>
+      </defs>
+
+      <rect x="0" y="0" width="1000" height="480" fill="url(#grid)"/>
+
+      <!-- helpers -->
+      <line id="h1" class="helper" x1="0" y1="0" x2="0" y2="0"/>
+      <line id="h2" class="helper" x1="0" y1="0" x2="0" y2="0"/>
+
+      <!-- the path -->
+      <path id="path" d="" fill="none" stroke="var(--a)" stroke-width="4" marker-end="url(#arrow)"/>
+
+      <!-- handles -->
+      <circle id="p0" class="handle p0" r="7" cx="120" cy="360"/>
+      <circle id="p1" class="handle p1" r="7" cx="320" cy="120"/>
+      <circle id="p2" class="handle p2" r="7" cx="880" cy="140"/>
+      <circle id="p3" class="handle p3" r="7" cx="680" cy="120" style="visibility:hidden"/>
+      <circle id="pm" class="handle pm" r="8" cx="0" cy="0"/>
+      
+      <text id="lbl" class="label" x="10" y="18"></text>
+    </svg>
+
+    <div class="row" style="margin-top:10px">
+      <div>
+        <div class="mono">P0 (đầu): x=<span class="k" id="k0x"></span> y=<span class="k" id="k0y"></span></div>
+        <input type="range" id="r0x" min="0" max="1000"><input type="range" id="r0y" min="0" max="480">
+      </div>
+      <div>
+        <div class="mono">P1 (control Q / control1 C): x=<span class="k" id="k1x"></span> y=<span class="k" id="k1y"></span></div>
+        <input type="range" id="r1x" min="0" max="1000"><input type="range" id="r1y" min="0" max="480">
+      </div>
+      <div id="c2box" style="display:none">
+        <div class="mono">P3 (control2 C): x=<span class="k" id="k3x"></span> y=<span class="k" id="k3y"></span></div>
+        <input type="range" id="r3x" min="0" max="1000"><input type="range" id="r3y" min="0" max="480">
+      </div>
+      <div>
+        <div class="mono">P2 (cuối): x=<span class="k" id="k2x"></span> y=<span class="k" id="k2y"></span></div>
+        <input type="range" id="r2x" min="0" max="1000"><input type="range" id="r2y" min="0" max="480">
+      </div>
+    </div>
+
+    <div class="code mono" id="code"></div>
+  </div>
+</div>
+
+<script>
+// Basic math
+function qPoint(t, P0, P1, P2){
+  const u=1-t;
+  return {x:u*u*P0.x + 2*u*t*P1.x + t*t*P2.x,
+          y:u*u*P0.y + 2*u*t*P1.y + t*t*P2.y};
+}
+function qControlFromPointAtT(t, P0, P2, M){
+  const u=1-t, d=2*u*t;
+  return {x:(M.x - u*u*P0.x - t*t*P2.x)/d,
+          y:(M.y - u*u*P0.y - t*t*P2.y)/d};
+}
+function svgPoint(evt, svg){
+  const pt = svg.createSVGPoint(); pt.x=evt.clientX; pt.y=evt.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+// DOM refs
+const svg = document.getElementById('stage');
+const path = document.getElementById('path');
+const h1 = document.getElementById('h1'), h2 = document.getElementById('h2');
+const p0el = document.getElementById('p0'), p1el = document.getElementById('p1'),
+      p2el = document.getElementById('p2'), p3el = document.getElementById('p3'),
+      pmel = document.getElementById('pm');
+const lbl = document.getElementById('lbl'), code = document.getElementById('code');
+
+// Sliders
+const r0x = document.getElementById('r0x'), r0y = document.getElementById('r0y');
+const r1x = document.getElementById('r1x'), r1y = document.getElementById('r1y');
+const r3x = document.getElementById('r3x'), r3y = document.getElementById('r3y');
+const r2x = document.getElementById('r2x'), r2y = document.getElementById('r2y');
+const k0x = document.getElementById('k0x'), k0y = document.getElementById('k0y');
+const k1x = document.getElementById('k1x'), k1y = document.getElementById('k1y');
+const k3x = document.getElementById('k3x'), k3y = document.getElementById('k3y');
+const k2x = document.getElementById('k2x'), k2y = document.getElementById('k2y');
+
+// Mode
+let mode = 'Q'; // 'Q' or 'C'
+const modeQ = document.getElementById('modeQ');
+const modeC = document.getElementById('modeC');
+const c2box = document.getElementById('c2box');
+
+// State
+let P0 = {x:+p0el.getAttribute('cx'), y:+p0el.getAttribute('cy')};
+let P1 = {x:+p1el.getAttribute('cx'), y:+p1el.getAttribute('cy')};
+let P2 = {x:+p2el.getAttribute('cx'), y:+p2el.getAttribute('cy')};
+let P3 = {x:+p3el.getAttribute('cx'), y:+p3el.getAttribute('cy')};
+const tMid = 0.5;
+
+// Render
+function render(){
+  p0el.setAttribute('cx', P0.x); p0el.setAttribute('cy', P0.y);
+  p1el.setAttribute('cx', P1.x); p1el.setAttribute('cy', P1.y);
+  p2el.setAttribute('cx', P2.x); p2el.setAttribute('cy', P2.y);
+  p3el.setAttribute('cx', P3.x); p3el.setAttribute('cy', P3.y);
+
+  r0x.value=P0.x; r0y.value=P0.y; k0x.textContent=P0.x.toFixed(0); k0y.textContent=P0.y.toFixed(0);
+  r1x.value=P1.x; r1y.value=P1.y; k1x.textContent=P1.x.toFixed(0); k1y.textContent=P1.y.toFixed(0);
+  r2x.value=P2.x; r2y.value=P2.y; k2x.textContent=P2.x.toFixed(0); k2y.textContent=P2.y.toFixed(0);
+  r3x.value=P3.x; r3y.value=P3.y; k3x.textContent=P3.x.toFixed(0); k3y.textContent=P3.y.toFixed(0);
+
+  if(mode==='Q'){
+    const M = qPoint(tMid,P0,P1,P2);
+    pmel.setAttribute('cx', M.x); pmel.setAttribute('cy', M.y);
+    h1.setAttribute('x1', P0.x); h1.setAttribute('y1', P0.y);
+    h1.setAttribute('x2', P1.x); h1.setAttribute('y2', P1.y);
+    h2.setAttribute('x1', P2.x); h2.setAttribute('y1', P2.y);
+    h2.setAttribute('x2', P1.x); h2.setAttribute('y2', P1.y);
+    path.setAttribute('d', `M ${P0.x} ${P0.y} Q ${P1.x} ${P1.y} ${P2.x} ${P2.y}`);
+    lbl.textContent = `Q: P0(${P0.x.toFixed(0)},${P0.y.toFixed(0)})  P1(ctrl:${P1.x.toFixed(0)},${P1.y.toFixed(0)})  P2(${P2.x.toFixed(0)},${P2.y.toFixed(0)})`;
+    code.textContent = `d="M ${P0.x.toFixed(0)} ${P0.y.toFixed(0)} Q ${P1.x.toFixed(0)} ${P1.y.toFixed(0)} ${P2.x.toFixed(0)} ${P2.y.toFixed(0)}"`;
+  }else{
+    // Cubic midpoint for display only (not constrained)
+    const t=tMid;
+    const u=1-t;
+    const Cx = u*u*u*P0.x + 3*u*u*t*P1.x + 3*u*t*t*P3.x + t*t*t*P2.x;
+    const Cy = u*u*u*P0.y + 3*u*u*t*P1.y + 3*u*t*t*P3.y + t*t*t*P2.y;
+    pmel.setAttribute('cx', Cx); pmel.setAttribute('cy', Cy);
+    h1.setAttribute('x1', P0.x); h1.setAttribute('y1', P0.y);
+    h1.setAttribute('x2', P1.x); h1.setAttribute('y2', P1.y);
+    h2.setAttribute('x1', P2.x); h2.setAttribute('y1', P2.y);
+    h2.setAttribute('x2', P3.x); h2.setAttribute('y2', P3.y);
+    path.setAttribute('d', `M ${P0.x} ${P0.y} C ${P1.x} ${P1.y} ${P3.x} ${P3.y} ${P2.x} ${P2.y}`);
+    lbl.textContent = `C: P0(${P0.x.toFixed(0)},${P0.y.toFixed(0)})  P1(c1:${P1.x.toFixed(0)},${P1.y.toFixed(0)})  P3(c2:${P3.x.toFixed(0)},${P3.y.toFixed(0)})  P2(${P2.x.toFixed(0)},${P2.y.toFixed(0)})`;
+    code.textContent = `d="M ${P0.x.toFixed(0)} ${P0.y.toFixed(0)} C ${P1.x.toFixed(0)} ${P1.y.toFixed(0)} ${P3.x.toFixed(0)} ${P3.y.toFixed(0)} ${P2.x.toFixed(0)} ${P2.y.toFixed(0)}"`;
+  }
+}
+
+// drag helpers
+function enableDrag(el, onMove){
+  let active=false;
+  el.addEventListener('pointerdown', e=>{ active=true; el.setPointerCapture(e.pointerId); });
+  svg.addEventListener('pointermove', e=>{
+    if(!active) return;
+    const p = svgPoint(e, svg);
+    onMove({x:Math.max(0, Math.min(1000, p.x)), y:Math.max(0, Math.min(480, p.y))});
+    render();
+  });
+  svg.addEventListener('pointerup', ()=>{ active=false; });
+}
+// Dragging
+enableDrag(p0el, p=>{ P0=p; });
+enableDrag(p1el, p=>{ P1=p; });
+enableDrag(p2el, p=>{ P2=p; });
+enableDrag(p3el, p=>{ P3=p; });
+// Midpoint drag (only Q: recompute control to pass through pm at t=0.5)
+enableDrag(pmel, p=>{
+  if(mode==='Q'){
+    P1 = qControlFromPointAtT(tMid, P0, P2, p);
+  }else{
+    // For Cubic, optional: move both controls toward pm (simple heuristic)
+    const k=0.4;
+    P1 = {x: P1.x + (p.x-P1.x)*k, y:P1.y + (p.y-P1.y)*k};
+    P3 = {x: P3.x + (p.x-P3.x)*k, y:P3.y + (p.y-P3.y)*k};
+  }
+});
+
+// Sliders updates
+[r0x,r0y,r1x,r1y,r2x,r2y,r3x,r3y].forEach(r=>{
+  r.addEventListener('input', ()=>{
+    P0={x:+r0x.value,y:+r0y.value};
+    P1={x:+r1x.value,y:+r1y.value};
+    P2={x:+r2x.value,y:+r2y.value};
+    P3={x:+r3x.value,y:+r3y.value};
+    render();
+  });
+});
+
+// Mode switch
+modeQ.addEventListener('click', ()=>{
+  mode='Q';
+  p3el.style.visibility='hidden';
+  c2box.style.display='none';
+  render();
+});
+modeC.addEventListener('click', ()=>{
+  mode='C';
+  p3el.style.visibility='visible';
+  c2box.style.display='block';
+  render();
+});
+
+// Presets
+document.getElementById('presetArc').addEventListener('click', ()=>{
+  P0={x:120,y:360}; P2={x:880,y:360};
+  if(mode==='Q'){ P1={x:500,y:80}; }
+  else{ P1={x:360,y:80}; P3={x:640,y:80}; }
+  render();
+});
+document.getElementById('presetS').addEventListener('click', ()=>{
+  P0={x:80,y:300}; P2={x:920,y:180};
+  if(mode==='Q'){ P1={x:520,y:60}; }
+  else{ P1={x:300,y:80}; P3={x:700,y:300}; }
+  render();
+});
+document.getElementById('reset').addEventListener('click', ()=>{
+  P0={x:120,y:360}; P1={x:320,y:120}; P2={x:880,y:140}; P3={x:680,y:120};
+  render();
+});
+
+// Copy 'd'
+document.getElementById('copy').addEventListener('click', async ()=>{
+  try{
+    await navigator.clipboard.writeText(code.textContent.trim());
+    alert('Đã copy thuộc tính d vào clipboard!');
+  }catch(e){
+    alert('Copy không thành công, bạn hãy bôi đen và copy thủ công.');
+  }
+});
+
+// Init sliders & render
+document.getElementById('r0x').value=P0.x; document.getElementById('r0y').value=P0.y;
+document.getElementById('r1x').value=P1.x; document.getElementById('r1y').value=P1.y;
+document.getElementById('r2x').value=P2.x; document.getElementById('r2y').value=P2.y;
+document.getElementById('r3x').value=P3.x; document.getElementById('r3y').value=P3.y;
+
+render();
+</script>
+</body>
+</html>
